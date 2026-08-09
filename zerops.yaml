@@ -1,0 +1,67 @@
+zerops:
+  - setup: orchestrator
+    build:
+      base: python@3.11
+      buildCommands:
+        - pip install -r orchestrator/requirements.txt
+      deployFiles:
+        - ./orchestrator/app
+        - ./orchestrator/requirements.txt
+      cache: ~/.cache/pip
+    run:
+      base: python@3.11
+      ports:
+        - port: 8080
+          httpSupport: true
+      envVariables:
+        PORT: "8080"
+        Z_API_TOKEN: "${secret_zerops_api_token}"
+        Z_ORG_ID: "${secret_zerops_org_id}"
+        GITHUB_TOKEN: "${secret_github_token}"
+        GEMINI_API_KEY: "${secret_gemini_api_key}"
+        DEMO_REPO_URL: "https://github.com/siddarth709/ChronicleOps_Demo"
+        DEMO_SERVICE_TYPE: "nodejs@22"
+        POSTGRES_URL: "postgres://${dbpostgres_user}:${dbpostgres_password}@${dbpostgres_hostname}:${dbpostgres_port}/${dbpostgres_dbName}"
+        VALKEY_HOST: ${valkeycache_hostname}
+        VALKEY_PORT: ${valkeycache_port}
+        VALKEY_PASSWORD: ${valkeycache_password}
+      start: uvicorn app.main:app --host 0.0.0.0 --port 8080
+
+  - setup: worker
+    build:
+      base: python@3.11
+      buildCommands:
+        - pip install -r worker/requirements.txt
+      deployFiles:
+        - ./worker
+      cache: ~/.cache/pip
+    run:
+      base: python@3.11
+      envVariables:
+        Z_API_TOKEN: "${secret_zerops_api_token}"
+        POSTGRES_URL: "postgres://${dbpostgres_user}:${dbpostgres_password}@${dbpostgres_hostname}:${dbpostgres_port}/${dbpostgres_dbName}"
+        VALKEY_HOST: ${valkeycache_hostname}
+        VALKEY_PORT: ${valkeycache_port}
+        VALKEY_PASSWORD: ${valkeycache_password}
+        ORCHESTRATOR_URL: "http://orchestrator:8080"
+      start: python worker/main.py
+
+  - setup: ingestion
+    build:
+      base: python@3.11
+      buildCommands:
+        - pip install -r ingestion/requirements.txt
+      deployFiles:
+        - ./ingestion
+      cache: ~/.cache/pip
+    run:
+      base: python@3.11
+      ports:
+        - port: 8090
+          httpSupport: true
+      envVariables:
+        PORT: "8090"
+        VALKEY_HOST: ${valkeycache_hostname}
+        VALKEY_PORT: ${valkeycache_port}
+        VALKEY_PASSWORD: ${valkeycache_password}
+      start: uvicorn ingestion.main:app --host 0.0.0.0 --port 8090

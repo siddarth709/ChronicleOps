@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChronicleOps | Autonomous Observability Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+      <div class="nav-brand">
+        <div class="brand-logo">
+          <span class="logo-pulse"></span>
+        </div>
+        <div class="brand-text">
+          <span class="title">ChronicleOps</span>
+          <span class="badge-tag">SENTINEL ENGINE v2.4</span>
+        </div>
+      </div>
+      <div class="nav-stats">
+        <div class="stat-item">
+          <span class="stat-label">SYSTEM HEALTH</span>
+          <span class="stat-val val-green" id="global-health">OPTIONAL</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">ACTIVE ENVS</span>
+          <span class="stat-val" id="active-env-count">0</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard-grid">
+      <!-- Hero Banner & Quick Actions -->
+      <section class="panel hero-panel">
+        <div class="hero-content">
+          <span class="hero-eyebrow">AUTOMATED CHAOS TESTING & RECOVERY</span>
+          <h2>Break it on purpose. <span class="gradient-text">Watch it self-heal.</span></h2>
+          <p class="hero-subtext">Spin up isolated Zerops environments, trigger real-time container kills, and track autonomous mean-time-to-recovery (MTTR) metrics.</p>
+        </div>
+        <div class="hero-actions">
+          <button id="demo-quickstart-btn" class="btn-primary glow-button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Run Demo (1-Click Quickstart)
+          </button>
+          <button id="seed-samples-btn" class="btn-secondary">Load Sample Incidents</button>
+          <button id="reset-samples-btn" class="btn-ghost">Clear Samples</button>
+        </div>
+        <div id="judge-status" class="status-banner"></div>
+      </section>
+
+      <!-- Spawn & Environments Column -->
+      <div class="grid-column">
+        <!-- Spawn Module -->
+        <section class="panel">
+          <div class="panel-header">
+            <h3>Spawn Target Environment</h3>
+            <span class="panel-tag">MODULE 01</span>
+          </div>
+          <form id="spawn-form" class="spawn-input-group">
+            <input id="repo-url" type="text" placeholder="https://github.com/owner/repo" required />
+            <button type="submit" class="btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Spawn
+            </button>
+          </form>
+        </section>
+
+        <!-- Active Environments Card List -->
+        <section class="panel env-panel">
+          <div class="panel-header">
+            <h3>Tracked Environments</h3>
+            <span class="panel-tag" id="env-total-badge">0 TOTAL</span>
+          </div>
+          <div id="environments-list" class="env-card-container">
+            <div class="loading-state">Fetching environments...</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Live Vitals & Diagnosis Column -->
+      <div class="grid-column">
+        <!-- Vitals & Chart Module -->
+        <section class="panel vitals-panel">
+          <div class="panel-header">
+            <h3>Live Telemetry Signal</h3>
+            <div class="signal-indicator">
+              <div id="status-dot" class="dot unknown"></div>
+              <span id="status-label" class="status-label">awaiting signal</span>
+            </div>
+          </div>
+          
+          <div class="chart-wrapper">
+            <canvas id="uptime-chart" width="640" height="140"></canvas>
+          </div>
+
+          <div class="metrics-row">
+            <div class="metric-card">
+              <span class="m-label">LAST MTTR</span>
+              <span class="m-value" id="mttr-readout">--</span>
+            </div>
+            <div class="metric-card">
+              <span class="m-label">SIGNAL SAMPLING</span>
+              <span class="m-value">1.0s / RTC</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Incident & Diagnosis Output -->
+        <section class="panel diagnosis-panel">
+          <div class="panel-header">
+            <h3>AI Root-Cause Diagnosis</h3>
+            <span class="panel-tag">GEMINI INSIGHTS</span>
+          </div>
+          <div id="diagnosis-container" class="diagnosis-card">
+            <div id="diagnosis-output" class="empty-diagnosis">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+              <p>No chaos incidents triggered for this environment yet.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
