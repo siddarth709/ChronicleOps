@@ -58,12 +58,12 @@ async def _async_provision(env_id: str, project_name: str, service_name: str, se
             )
 
         if exp_id:
-            await zerops_cli.stop_service(service_id, project_id)
             with db.get_conn() as conn:
                 conn.execute(
                     "UPDATE experiments SET status = 'running' WHERE id = %s",
                     (exp_id,),
                 )
+            await zerops_cli.stop_service(service_id, project_id)
             pubsub.publish("experiment_started", {"experiment_id": exp_id, "kind": "kill", "is_demo": is_demo})
         else:
             pubsub.publish("environment_created", {"environment_id": env_id, "status": "ready", "is_demo": is_demo})
@@ -222,7 +222,7 @@ async def recover_experiment(experiment_id: str):
         service_id = await zerops_cli.get_service_id_by_name(exp["project_id"], exp.get("service_name") or "app")
 
     if service_id and exp["project_id"]:
-        await zerops_cli.start_service(service_id, exp["project_id"])
+        asyncio.create_task(zerops_cli.start_service(service_id, exp["project_id"]))
 
     pubsub.publish("experiment_recovering", {"experiment_id": experiment_id})
     return {"status": "restart_issued", "experiment_id": experiment_id}

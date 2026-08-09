@@ -16,7 +16,7 @@ _client = redis.Redis(
 CHANNEL = "sentinel:events"
 
 def publish(event_type: str, payload: dict) -> None:
-    message = json.dumps({"type": event_type, **payload})
+    message = json.dumps({"type": event_type, **payload}, default=str)
     try:
         _client.publish(CHANNEL, message)
     except redis.RedisError:

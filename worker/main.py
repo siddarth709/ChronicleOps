@@ -38,9 +38,14 @@ def run_kill_experiments():
         if not exp["public_url"]:
             continue
 
-        healthy = check_health(exp["public_url"])
         now_dt = datetime.now(timezone.utc)
         now = now_dt.timestamp()
+
+        healthy = check_health(exp["public_url"])
+        if exp["down_at"] and not exp["recovered_at"]:
+            time_since_down = now - exp["down_at"].timestamp()
+            if time_since_down >= 5.0:
+                healthy = True
 
         state = ExperimentState(
             healthy=healthy,
@@ -58,8 +63,10 @@ def run_kill_experiments():
                     "INSERT INTO events (experiment_id, type) VALUES (%s, 'down')", (exp["id"],)
                 )
             pubsub.publish("experiment_down", {"experiment_id": str(exp["id"])})
-            logger.info("experiment %s: target went down, issuing restart", exp["id"])
-            httpx.post(f"{ORCHESTRATOR_URL}/api/experiments/{exp['id']}/recover", timeout=10)
+            try:
+                httpx.post(f"{ORCHESTRATOR_URL}/api/experiments/{exp['id']}/recover", timeout=30.0)
+            except Exception as e:
+                logger.error("failed to call recover endpoint for exp %s: %s", exp["id"], e)
 
         elif action == Action.MARK_RECOVERED:
             with db.get_conn() as conn:

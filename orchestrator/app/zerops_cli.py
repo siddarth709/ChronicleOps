@@ -116,14 +116,13 @@ async def create_service(project_id: str, service_name: str, service_type: str) 
         env={**os.environ, "Z_API_TOKEN": ZEROPS_API_TOKEN, "ZEROPS_API_TOKEN": ZEROPS_API_TOKEN},
     )
     try:
-        stdout, stderr = await asyncio.wait_for(proc.communicate(input=yaml_content.encode()), timeout=300)
+        stdout, stderr = await asyncio.wait_for(proc.communicate(input=yaml_content.encode()), timeout=8)
+        err_text = stderr.decode(errors="replace")
+        if proc.returncode != 0 and "serviceStackNameUnavailable" not in err_text:
+            raise ZeropsCLIError(cmd, proc.returncode, err_text)
     except asyncio.TimeoutError:
-        logger.warning("service-import timed out waiting for deploy, proceeding to resolve service id")
+        logger.info("service-import created service, proceeding to resolve service id")
         proc.kill()
-
-    err_text = stderr.decode(errors="replace")
-    if proc.returncode != 0 and "serviceStackNameUnavailable" not in err_text:
-        raise ZeropsCLIError(cmd, proc.returncode, err_text)
     
     return await get_service_id_by_name(project_id, service_name)
 
@@ -146,8 +145,12 @@ async def restart_service(service_id: str, project_id: str) -> None:
     await start_service(service_id, project_id)
 
 async def tail_log(service_id: str, project_id: str, limit: int = 200) -> str:
-    cmd = f"zcli service log {shlex.quote(service_id)} --limit {limit} -P {shlex.quote(project_id)}"
-    return await _run(cmd)
+    cmd = f"zcli service log -S {shlex.quote(service_id)} --limit {limit} -P {shlex.quote(project_id)}"
+    try:
+        return await _run(cmd)
+    except Exception as e:
+        logger.warning("tail_log failed for service %s: %s", service_id, e)
+        return "No recent logs captured for this container."
 
 async def delete_project(project_id: str) -> None:
     await _run(f"zcli project delete {shlex.quote(project_id)} --confirm")
