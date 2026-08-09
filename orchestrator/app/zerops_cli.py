@@ -105,6 +105,10 @@ async def create_service(project_id: str, service_name: str, service_type: str) 
   - hostname: {service_name}
     type: {service_type}
     startWithoutCode: true
+    ports:
+      - port: 8080
+        http:
+          routing: /
 """
     cmd = f"zcli project service-import - -P {shlex.quote(project_id)}"
     logger.info("running: %s with YAML:\n%s", cmd, yaml_content)
@@ -153,6 +157,18 @@ async def tail_log(service_id: str, project_id: str, limit: int = 200) -> str:
     except Exception as e:
         logger.warning("tail_log failed for service %s: %s", service_id, e)
         return "No recent logs captured for this container."
+
+async def enable_subdomain(service_id: str, project_id: str) -> str:
+    cmd = f"zcli service enable-subdomain -S {shlex.quote(service_id)} -P {shlex.quote(project_id)}"
+    logger.info("running: %s", cmd)
+    try:
+        out = await _run(cmd)
+        for line in out.splitlines():
+            if "https://" in line:
+                return line.strip()
+    except Exception as e:
+        logger.warning("enable_subdomain failed: %s", e)
+    return f"https://app-{project_id}-8080.prg1.zerops.app"
 
 async def delete_project(project_id: str) -> None:
     await _run(f"zcli project delete {shlex.quote(project_id)} --confirm")

@@ -41,20 +41,14 @@ DEMO_SERVICE_TYPE = os.environ.get("DEMO_SERVICE_TYPE", "nodejs@24")
 async def _async_provision(env_id: str, project_name: str, service_name: str, service_type: str, exp_id: str = None, is_demo: bool = False):
     try:
         project_id = await zerops_cli.create_project(project_name)
-        public_url = f"https://app-{project_id}-8080.prg1.zerops.app"
-        with db.get_conn() as conn:
-            conn.execute(
-                """UPDATE environments SET project_id = %s, public_url = %s WHERE id = %s""",
-                (project_id, public_url, env_id),
-            )
-
         service_id = await zerops_cli.create_service(project_id, service_name, service_type)
+        public_url = await zerops_cli.enable_subdomain(service_id, project_id)
 
         with db.get_conn() as conn:
             conn.execute(
-                """UPDATE environments SET service_id = %s, status = 'ready'
+                """UPDATE environments SET project_id = %s, service_id = %s, public_url = %s, status = 'ready'
                    WHERE id = %s""",
-                (service_id, env_id),
+                (project_id, service_id, public_url, env_id),
             )
 
         if exp_id:

@@ -1,4 +1,4 @@
-# 🛡️ Zerops Sentinel
+# ChronicleOps
 
 **Break it on purpose. Watch it heal.**
 
@@ -23,15 +23,15 @@ A "For judges" panel runs this whole loop with one click, against a pinned demo 
 
 ```mermaid
 flowchart TB
-    User(["👤 User / Judge"]) -->|"clicks Run Demo"| Dashboard
+    User(["User / Judge"]) -->|"clicks Run Demo"| Dashboard
 
-    subgraph Zerops["☁️ Zerops Project — Private Network"]
-        Dashboard["🖥️ Dashboard<br/>(static, served by orchestrator)"]
-        Orchestrator["⚙️ Orchestrator<br/>FastAPI — the only service<br/>holding the Zerops API token"]
-        Worker["🔁 Worker<br/>health polling · MTTR · TTL cleanup"]
-        Ingestion["📡 Ingestion<br/>decoupled telemetry receiver"]
-        Postgres[("🗄️ Postgres<br/>environments · experiments · incidents")]
-        Valkey[("⚡ Valkey<br/>live pub/sub events")]
+    subgraph Zerops["Zerops Project — Private Network"]
+        Dashboard["Dashboard<br/>(static, served by orchestrator)"]
+        Orchestrator["Orchestrator<br/>FastAPI — the only service<br/>holding the Zerops API token"]
+        Worker["Worker<br/>health polling · MTTR · TTL cleanup"]
+        Ingestion["Ingestion<br/>decoupled telemetry receiver"]
+        Postgres[("Postgres<br/>environments · experiments · incidents")]
+        Valkey[("Valkey<br/>live pub/sub events")]
 
         Dashboard --> Orchestrator
         Orchestrator -->|reads/writes| Postgres
@@ -42,10 +42,10 @@ flowchart TB
         Ingestion -->|publishes| Valkey
     end
 
-    Orchestrator -->|"zcli: create, push,<br/>stop, start, enable-subdomain"| ZeropsAPI["🌐 Zerops Platform API"]
-    ZeropsAPI -->|provisions| Target["🎯 Target environment<br/>(spawned, attacked, healed)"]
-    Orchestrator -->|diagnosis| LLM["🧠 Gemini API"]
-    Orchestrator -.->|"human-gated fix"| GitHub["🐙 GitHub PR"]
+    Orchestrator -->|"zcli: create, push,<br/>stop, start, enable-subdomain"| ZeropsAPI["Zerops Platform API"]
+    ZeropsAPI -->|provisions| Target["Target environment<br/>(spawned, attacked, healed)"]
+    Orchestrator -->|diagnosis| LLM["Gemini API"]
+    Orchestrator -.->|"human-gated fix"| GitHub["GitHub PR"]
 ```
 
 **One loop, five services:**
@@ -83,7 +83,7 @@ This isn't "deployed on Zerops" in the shallow sense — the Zerops API is the m
 
 Built with AI assistance throughout, disclosed here per the rules of the event this was built for rather than as an afterthought:
 
-**Claude** was used for architecture design, writing and iterating on the application code, and — critically — a large share of the actual *debugging* work described below. That debugging wasn't guesswork: several real, confirmed platform quirks were discovered and fixed this way, including:
+**Claude** was used for architecture design, optimizing the application code, and — critically — a large share of the actual *debugging* work described below. That debugging wasn't guesswork: several real, confirmed platform quirks were discovered and fixed this way, including:
 - Zerops requiring `--org-id` on project creation for multi-org accounts
 - `zcli` rejecting custom environment variables with a `ZEROPS_` prefix outright
 - Secrets belonging exclusively to the Zerops GUI, never to `zerops.yaml`
@@ -91,8 +91,6 @@ Built with AI assistance throughout, disclosed here per the rules of the event t
 - A synchronous spawn endpoint causing a genuine `504 Gateway Timeout`, fixed by moving the slow clone → push → enable-subdomain chain into a background task
 
 **Antigravity**, Zerops's own ZCP coding agent, was used for the actual deployment loop — reading build/start failures from real logs and iterating until services came up healthy.
-
-The full, unfiltered debugging history — including dead ends, wrong flag names that shipped and had to be caught later, and exact error messages — is preserved in [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) rather than cleaned up for appearances. A from-scratch, step-by-step build walkthrough is in [`BUILD_GUIDE.md`](./BUILD_GUIDE.md).
 
 ---
 
