@@ -236,12 +236,14 @@ async def recover_experiment(experiment_id: str):
         service_id = await zerops_cli.get_service_id_by_name(exp["project_id"], exp.get("service_name") or "app")
 
     if service_id and exp["project_id"]:
-        try:
-            logger.info("Executing recovery start for service %s in project %s", service_id, exp["project_id"])
-            await zerops_cli.start_service(service_id, exp["project_id"])
-            logger.info("Successfully started service %s in project %s", service_id, exp["project_id"])
-        except Exception as e:
-            logger.error("Failed to start service %s in project %s during recovery: %s", service_id, exp["project_id"], e)
+        async def _async_start():
+            try:
+                logger.info("Executing recovery start for service %s in project %s", service_id, exp["project_id"])
+                await zerops_cli.start_service(service_id, exp["project_id"])
+                logger.info("Successfully started service %s in project %s", service_id, exp["project_id"])
+            except Exception as e:
+                logger.error("Failed to start service %s in project %s during recovery: %s", service_id, exp["project_id"], e)
+        asyncio.create_task(_async_start())
 
     pubsub.publish("experiment_recovering", {"experiment_id": experiment_id})
     return {"status": "restart_issued", "experiment_id": experiment_id}
