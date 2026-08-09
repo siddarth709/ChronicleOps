@@ -151,6 +151,7 @@ async function refreshEnvironments() {
       <div class="env-actions">
         <button data-action="select" data-id="${env.id}" class="btn-secondary btn-sm">View</button>
         <button data-action="chaos" data-id="${env.id}" class="btn-danger btn-sm" ${env.status !== "ready" ? "disabled" : ""}>Kill</button>
+        <button data-action="delete" data-id="${env.id}" class="btn-ghost btn-sm">Delete</button>
       </div>
     `;
     envListEl.appendChild(card);
@@ -178,6 +179,27 @@ async function refreshEnvironments() {
         });
       } finally {
         btn.disabled = false;
+      }
+    })
+  );
+
+  envListEl.querySelectorAll("[data-action='delete']").forEach((btn) =>
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      btn.disabled = true;
+      btn.textContent = "Deleting…";
+      try {
+        await fetch(`${API}/api/environments/${id}`, { method: "DELETE" });
+        if (selectedEnvironmentId === id) {
+          selectedEnvironmentId = null;
+          timeline = [];
+        }
+        await refreshEnvironments();
+      } catch (err) {
+        console.error("Delete failed", err);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Delete";
       }
     })
   );

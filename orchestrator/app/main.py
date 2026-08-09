@@ -188,6 +188,26 @@ async def demo_quickstart():
 
     return {"environment_id": env_id, "experiment_id": exp_id, "demo_repo": DEMO_REPO_URL, "status": "provisioning"}
 
+@app.delete("/api/environments/{environment_id}")
+async def delete_environment(environment_id: str):
+    with db.get_conn() as conn:
+        env = conn.execute("SELECT * FROM environments WHERE id = %s", (environment_id,)).fetchone()
+    if not env:
+        raise HTTPException(404, "environment not found")
+
+    project_id = (env["project_id"] or "").strip()
+    if project_id:
+        try:
+            await zerops_cli.delete_project(project_id)
+        except Exception as e:
+            logger.warning("failed to delete Zerops project %s: %s", project_id, e)
+
+    with db.get_conn() as conn:
+        conn.execute("UPDATE environments SET status = 'destroyed' WHERE id = %s", (environment_id,))
+
+    pubsub.publish("environment_destroyed", {"environment_id": environment_id})
+    return {"status": "destroyed", "environment_id": environment_id}
+
 @app.get("/api/environments/{environment_id}/experiments")
 def list_experiments(environment_id: str):
     with db.get_conn() as conn:
