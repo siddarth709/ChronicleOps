@@ -104,7 +104,7 @@ async def spawn_environment(req: SpawnRequest):
 @app.get("/api/environments")
 def list_environments():
     with db.get_conn() as conn:
-        rows = conn.execute("SELECT * FROM environments ORDER BY created_at DESC").fetchall()
+        rows = conn.execute("SELECT * FROM environments WHERE status != 'destroyed' ORDER BY created_at DESC").fetchall()
     return rows
 
 class ExperimentRequest(BaseModel):
@@ -203,7 +203,7 @@ async def delete_environment(environment_id: str):
             logger.warning("failed to delete Zerops project %s: %s", project_id, e)
 
     with db.get_conn() as conn:
-        conn.execute("UPDATE environments SET status = 'destroyed' WHERE id = %s", (environment_id,))
+        conn.execute("DELETE FROM environments WHERE id = %s", (environment_id,))
 
     pubsub.publish("environment_destroyed", {"environment_id": environment_id})
     return {"status": "destroyed", "environment_id": environment_id}
@@ -242,7 +242,12 @@ async def recover_experiment(experiment_id: str):
         service_id = await zerops_cli.get_service_id_by_name(exp["project_id"], exp.get("service_name") or "app")
 
     if service_id and exp["project_id"]:
-        asyncio.create_task(zerops_cli.start_service(service_id, exp["project_id"]))
+        try:
+            logger.info("Executing recovery start for service %s in project %s", service_id, exp["project_id"])
+            await zerops_cli.start_service(service_id, exp["project_id"])
+            logger.info("Successfully started service %s in project %s", service_id, exp["project_id"])
+        except Exception as e:
+            logger.error("Failed to start service %s in project %s during recovery: %s", service_id, exp["project_id"], e)
 
     pubsub.publish("experiment_recovering", {"experiment_id": experiment_id})
     return {"status": "restart_issued", "experiment_id": experiment_id}

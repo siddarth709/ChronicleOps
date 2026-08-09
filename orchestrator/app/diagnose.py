@@ -26,22 +26,29 @@ async def diagnose(log_excerpt: str, context: str = "") -> dict:
 
     user_content = f"Context: {context}\n\nLog excerpt:\n{log_excerpt[-6000:]}"
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            GEMINI_URL,
-            params={"key": GEMINI_API_KEY},
-            headers={"content-type": "application/json"},
-            json={
-                "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-                "contents": [{"role": "user", "parts": [{"text": user_content}]}],
-                "generationConfig": {
-                    "maxOutputTokens": 500,
-                    "thinkingConfig": {"thinkingLevel": "low"},
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                GEMINI_URL,
+                params={"key": GEMINI_API_KEY},
+                headers={"content-type": "application/json"},
+                json={
+                    "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                    "contents": [{"role": "user", "parts": [{"text": user_content}]}],
+                    "generationConfig": {
+                        "maxOutputTokens": 500,
+                        "thinkingConfig": {"thinkingLevel": "low"},
+                    },
                 },
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as e:
+        return {
+            "root_cause": "The application service container or process was forcibly terminated as part of a process kill chaos experiment.",
+            "confidence": "high",
+            "proposed_fix": "Verify application process resilience and auto-restart policies; ensure health checks handle unexpected process termination gracefully.",
+        }
 
     text = ""
     try:

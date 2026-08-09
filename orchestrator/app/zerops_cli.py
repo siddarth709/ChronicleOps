@@ -133,11 +133,13 @@ async def push_service(service_name: str, work_dir: str, project_id: str = "") -
     return await _run(cmd, timeout=600)
 
 async def stop_service(service_id: str, project_id: str) -> None:
-    cmd = f"zcli service stop {shlex.quote(service_id)} -P {shlex.quote(project_id)}"
+    cmd = f"zcli service stop -S {shlex.quote(service_id)} -P {shlex.quote(project_id)}"
+    logger.info("running: %s", cmd)
     await _run(cmd)
 
 async def start_service(service_id: str, project_id: str) -> None:
-    cmd = f"zcli service start {shlex.quote(service_id)} -P {shlex.quote(project_id)}"
+    cmd = f"zcli service start -S {shlex.quote(service_id)} -P {shlex.quote(project_id)}"
+    logger.info("running: %s", cmd)
     await _run(cmd)
 
 async def restart_service(service_id: str, project_id: str) -> None:
