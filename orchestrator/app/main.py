@@ -209,7 +209,7 @@ def get_experiment(experiment_id: str):
 async def recover_experiment(experiment_id: str):
     with db.get_conn() as conn:
         exp = conn.execute(
-            """SELECT e.*, env.service_id, env.project_id FROM experiments e
+            """SELECT e.*, env.service_id, env.project_id, env.service_name FROM experiments e
                JOIN environments env ON env.id = e.environment_id
                WHERE e.id = %s""",
             (experiment_id,),
@@ -217,9 +217,15 @@ async def recover_experiment(experiment_id: str):
     if not exp:
         raise HTTPException(404, "experiment not found")
 
-    await zerops_cli.start_service(exp["service_id"], exp["project_id"])
+    service_id = exp["service_id"]
+    if not service_id and exp["project_id"]:
+        service_id = await zerops_cli.get_service_id_by_name(exp["project_id"], exp.get("service_name") or "app")
+
+    if service_id and exp["project_id"]:
+        await zerops_cli.start_service(service_id, exp["project_id"])
+
     pubsub.publish("experiment_recovering", {"experiment_id": experiment_id})
-    return {"status": "restart_issued"}
+    return {"status": "restart_issued", "experiment_id": experiment_id}
 
 @app.post("/api/experiments/{experiment_id}/diagnose")
 async def diagnose_experiment(experiment_id: str):
