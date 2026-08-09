@@ -1,6 +1,9 @@
 const API = ""; 
 
 const envListEl = document.getElementById("environments-list");
+const envTotalBadge = document.getElementById("env-total-badge");
+const globalHealthEl = document.getElementById("global-health");
+const activeEnvCountEl = document.getElementById("active-env-count");
 const statusDot = document.getElementById("status-dot");
 const statusLabelEl = document.getElementById("status-label");
 const mttrEl = document.getElementById("mttr-readout");
@@ -9,8 +12,28 @@ const canvas = document.getElementById("uptime-chart");
 const ctx = canvas.getContext("2d");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+const STATUS_LABELS = {
+  ready: "ready",
+  provisioning: "provisioning",
+  error: "error",
+  destroyed: "destroyed",
+};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
 let selectedEnvironmentId = null;
-let timeline = []; 
+let timeline = [];
+let showDestroyed = false;
+
+const toggleDestroyedBtn = document.getElementById("toggle-destroyed-btn");
+toggleDestroyedBtn.addEventListener("click", () => {
+  showDestroyed = !showDestroyed;
+  refreshEnvironments();
+});
 
 const judgeStatusEl = document.getElementById("judge-status");
 
@@ -58,27 +81,87 @@ document.getElementById("spawn-form").addEventListener("submit", async (e) => {
 });
 
 async function refreshEnvironments() {
-  const res = await fetch(`${API}/api/environments`);
-  const envs = await res.json();
-  envListEl.innerHTML = "";
+  let envs;
+  try {
+    const res = await fetch(`${API}/api/environments`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    envs = await res.json();
+  } catch (err) {
+    envListEl.innerHTML = `<div class="error-state">Couldn't load environments — retrying…</div>`;
+    return;
+  }
 
-  envs.forEach((env) => {
-    const row = document.createElement("div");
-    row.className = "env-row";
-    row.innerHTML = `
-      <span>${env.repo_url.replace("https://github.com/", "")}${env.is_demo ? " (demo)" : ""} — ${env.status}</span>
-      <span>
-        <button data-action="select" data-id="${env.id}">View</button>
-        <button data-action="chaos" data-id="${env.id}" class="danger">Kill</button>
-      </span>
+  envTotalBadge.textContent = `${envs.length} TOTAL`;
+
+  const activeCount = envs.filter((e) => e.status === "ready" || e.status === "provisioning").length;
+  activeEnvCountEl.textContent = activeCount;
+
+  const hasError = envs.some((e) => e.status === "error");
+  if (envs.length === 0) {
+    globalHealthEl.textContent = "IDLE";
+    globalHealthEl.className = "stat-val val-muted";
+  } else if (hasError) {
+    globalHealthEl.textContent = "DEGRADED";
+    globalHealthEl.className = "stat-val val-red";
+  } else {
+    globalHealthEl.textContent = "OPERATIONAL";
+    globalHealthEl.className = "stat-val val-green";
+  }
+
+  if (envs.length === 0) {
+    envListEl.innerHTML = `<div class="empty-state">No environments yet — spawn one above or run the demo.</div>`;
+    toggleDestroyedBtn.style.display = "none";
+    return;
+  }
+
+  const destroyedCount = envs.filter((e) => e.status === "destroyed").length;
+  if (destroyedCount === 0) {
+    toggleDestroyedBtn.style.display = "none";
+  } else {
+    toggleDestroyedBtn.style.display = "";
+    toggleDestroyedBtn.textContent = showDestroyed
+      ? `Hide destroyed (${destroyedCount})`
+      : `Show destroyed (${destroyedCount})`;
+  }
+
+  const STATUS_ORDER = { ready: 0, provisioning: 1, error: 2, destroyed: 3 };
+  const visibleEnvs = envs
+    .filter((e) => showDestroyed || e.status !== "destroyed")
+    .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
+
+  if (visibleEnvs.length === 0) {
+    envListEl.innerHTML = `<div class="empty-state">All ${destroyedCount} environments are destroyed — click "Show destroyed" to view them.</div>`;
+    return;
+  }
+
+  envListEl.innerHTML = "";
+  visibleEnvs.forEach((env) => {
+    const repoLabel = escapeHtml(env.repo_url.replace("https://github.com/", ""));
+    const statusText = STATUS_LABELS[env.status] || env.status;
+    const card = document.createElement("div");
+    card.className = "env-card" + (env.id === selectedEnvironmentId ? " active-selected" : "");
+    card.innerHTML = `
+      <div class="env-info">
+        <span class="env-repo">${repoLabel}${env.is_demo ? " (demo)" : ""}</span>
+        <div class="env-meta">
+          <span class="status-badge badge-${env.status}">${statusText}</span>
+          ${env.public_url ? `<a class="public-link" href="${escapeHtml(env.public_url)}" target="_blank" rel="noopener">${escapeHtml(env.public_url.replace("https://", ""))}</a>` : ""}
+        </div>
+      </div>
+      <div class="env-actions">
+        <button data-action="select" data-id="${env.id}" class="btn-secondary btn-sm">View</button>
+        <button data-action="chaos" data-id="${env.id}" class="btn-danger btn-sm" ${env.status !== "ready" ? "disabled" : ""}>Kill</button>
+      </div>
     `;
-    envListEl.appendChild(row);
+    envListEl.appendChild(card);
   });
 
   envListEl.querySelectorAll("[data-action='select']").forEach((btn) =>
     btn.addEventListener("click", () => {
       selectedEnvironmentId = btn.dataset.id;
       timeline = [];
+      envListEl.querySelectorAll(".env-card").forEach((c) => c.classList.remove("active-selected"));
+      btn.closest(".env-card").classList.add("active-selected");
     })
   );
 
@@ -86,19 +169,30 @@ async function refreshEnvironments() {
     btn.addEventListener("click", async () => {
       selectedEnvironmentId = btn.dataset.id;
       timeline = [];
-      await fetch(`${API}/api/experiments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ environment_id: selectedEnvironmentId, kind: "kill" }),
-      });
+      btn.disabled = true;
+      try {
+        await fetch(`${API}/api/experiments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ environment_id: selectedEnvironmentId, kind: "kill" }),
+        });
+      } finally {
+        btn.disabled = false;
+      }
     })
   );
 }
 
 async function pollLatestExperiment() {
   if (!selectedEnvironmentId) return;
-  const res = await fetch(`${API}/api/environments/${selectedEnvironmentId}/experiments`);
-  const experiments = await res.json();
+  let experiments;
+  try {
+    const res = await fetch(`${API}/api/environments/${selectedEnvironmentId}/experiments`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    experiments = await res.json();
+  } catch (err) {
+    return;
+  }
   if (!experiments.length) return;
 
   const latest = experiments[0];
@@ -121,6 +215,8 @@ async function pollLatestExperiment() {
           .map((s) => `- (${(s.similarity * 100).toFixed(0)}% match${s.is_sample ? ", sample data" : ""}) ${s.root_cause}`)
           .join("\n");
       }
+      diagnosisEl.innerHTML = "";
+      diagnosisEl.className = "diagnosis-content";
       diagnosisEl.textContent = text;
     }
   } else {
@@ -198,5 +294,3 @@ function drawTimeline() {
 setInterval(refreshEnvironments, 4000);
 setInterval(pollLatestExperiment, 1000);
 refreshEnvironments();
-
-

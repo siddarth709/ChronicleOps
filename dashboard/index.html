@@ -24,7 +24,7 @@
       <div class="nav-stats">
         <div class="stat-item">
           <span class="stat-label">SYSTEM HEALTH</span>
-          <span class="stat-val val-green" id="global-health">OPTIONAL</span>
+          <span class="stat-val val-green" id="global-health">IDLE</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">ACTIVE ENVS</span>
@@ -73,7 +73,10 @@
         <section class="panel env-panel">
           <div class="panel-header">
             <h3>Tracked Environments</h3>
-            <span class="panel-tag" id="env-total-badge">0 TOTAL</span>
+            <div class="panel-header-actions">
+              <button id="toggle-destroyed-btn" class="btn-ghost btn-sm" type="button">Show destroyed</button>
+              <span class="panel-tag" id="env-total-badge">0 TOTAL</span>
+            </div>
           </div>
           <div id="environments-list" class="env-card-container">
             <div class="loading-state">Fetching environments...</div>

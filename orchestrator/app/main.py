@@ -32,11 +32,11 @@ async def startup():
 
 class SpawnRequest(BaseModel):
     repo_url: str
-    service_type: str = "nodejs@22"
+    service_type: str = "nodejs@24"
     ttl_hours: int = DEFAULT_TTL_HOURS
 
 DEMO_REPO_URL = os.environ.get("DEMO_REPO_URL", "https://github.com/siddarth709/ChronicleOps_Demo")
-DEMO_SERVICE_TYPE = os.environ.get("DEMO_SERVICE_TYPE", "nodejs@22")
+DEMO_SERVICE_TYPE = os.environ.get("DEMO_SERVICE_TYPE", "nodejs@24")
 
 async def _async_provision(env_id: str, project_name: str, service_name: str, service_type: str, exp_id: str = None, is_demo: bool = False):
     try:

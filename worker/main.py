@@ -83,22 +83,45 @@ def cleanup_expired_environments():
         ).fetchall()
 
     now = datetime.now(timezone.utc).timestamp()
-    
-    expired = []
-    for c in candidates:
-        expires_at = c["expires_at"]
+
+    for env in candidates:
+        expires_at = env.get("expires_at")
+        
+        # Convert datetime objects to float timestamps if necessary
         if isinstance(expires_at, datetime):
             expires_at = expires_at.timestamp()
-        
-        if expires_at and is_expired(expires_at, now):
-            expired.append(c)
 
-    for env in expired:
-        logger.info("environment %s past TTL, tearing down project %s", env["id"], env["project_id"])
-        subprocess.run(["zcli", "project", "delete", env["project_id"], "--confirm"], check=False)
-        with db.get_conn() as conn:
-            conn.execute("UPDATE environments SET status = 'destroyed' WHERE id = %s", (env["id"],))
-            pubsub.publish("environment_destroyed", {"environment_id": str(env["id"])})
+        if not expires_at or not is_expired(expires_at, now):
+            continue
+
+        env_id = env["id"]
+        project_id = (env.get("project_id") or "").strip()
+
+        # Handle environments that failed creation and have no associated project_id
+        if not project_id:
+            logger.warning("Environment %s expired without a project_id; marking destroyed", env_id)
+            with db.get_conn() as conn:
+                conn.execute("UPDATE environments SET status = 'destroyed' WHERE id = %s", (env_id,))
+                pubsub.publish("environment_destroyed", {"environment_id": str(env_id)})
+            continue
+
+        logger.info("Environment %s past TTL, tearing down project %s", env_id, project_id)
+        
+        res = subprocess.run(
+            ["zcli", "project", "delete", project_id, "--confirm"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        # Mark destroyed if command succeeded OR if project was already deleted on Zerops (404 / Not Found)
+        if res.returncode == 0 or "not found" in res.stderr.lower():
+            with db.get_conn() as conn:
+                conn.execute("UPDATE environments SET status = 'destroyed' WHERE id = %s", (env_id,))
+                pubsub.publish("environment_destroyed", {"environment_id": str(env_id)})
+            logger.info("Successfully cleaned up environment %s", env_id)
+        else:
+            logger.error("Failed to delete project %s for env %s: %s", project_id, env_id, res.stderr.strip())
 
 
 def zcli_login():

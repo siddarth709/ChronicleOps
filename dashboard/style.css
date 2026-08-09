@@ -78,6 +78,8 @@ body {
 .stat-label { font-size: 10px; font-family: var(--font-mono); color: var(--text-dim); }
 .stat-val { font-size: 13px; font-family: var(--font-mono); font-weight: 600; color: var(--text-muted); }
 .stat-val.val-green { color: var(--primary); }
+.stat-val.val-red { color: var(--danger); }
+.stat-val.val-muted { color: var(--text-dim); }
 
 /* Layout Grid */
 .dashboard-grid {
@@ -124,6 +126,7 @@ body {
   border-radius: 6px;
   border: 1px solid var(--panel-border);
 }
+.panel-header-actions { display: flex; align-items: center; gap: 10px; }
 
 .hero-panel {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(17, 24, 34, 0.95) 100%);
@@ -201,6 +204,19 @@ button {
 
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+  background: initial;
+}
+.btn-danger:disabled { background: rgba(239, 68, 68, 0.12); color: var(--danger); }
+.btn-secondary:disabled { background: #1e293b; }
+
 /* Forms */
 .spawn-input-group { display: flex; gap: 10px; }
 .spawn-input-group input {
@@ -247,6 +263,16 @@ button {
 .badge-ready { background: rgba(16, 185, 129, 0.15); color: var(--primary); }
 .badge-provisioning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
 .badge-destroyed { background: rgba(100, 116, 139, 0.15); color: var(--text-dim); }
+.badge-error { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+
+.loading-state, .empty-state, .error-state {
+  padding: 24px 8px;
+  text-align: center;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+}
+.error-state { color: var(--danger); }
 
 .public-link {
   color: var(--accent-cyan);
